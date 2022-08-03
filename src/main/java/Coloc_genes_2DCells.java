@@ -136,7 +136,6 @@ public class Coloc_genes_2DCells implements PlugIn {
                 Objects3DIntPopulation gene1FilterPop = genes.geneIntensityFilter(gene1Pop,imgGene1,genes.gene1IntTh);
                 System.out.println("Total gene1 after intensity filter = "+gene1FilterPop.getNbObjects());
                 genes.closeImages(imgGene1);
-                gene1Pop = null;
                 
                 // Open Gene2 image
                 ImagePlus imgGene2 = BF.openImagePlus(options)[2];
@@ -145,7 +144,6 @@ public class Coloc_genes_2DCells implements PlugIn {
                 Objects3DIntPopulation gene2FilterPop = genes.geneIntensityFilter(gene2Pop,imgGene2,genes.gene2IntTh);
                 System.out.println("Total gene2 after intensity filter = "+gene2FilterPop.getNbObjects());
                 genes.closeImages(imgGene2);
-                gene2Pop = null;
                 
                 // Open Gene3 image
                 ImagePlus imgGene3  = BF.openImagePlus(options)[3];
@@ -154,7 +152,6 @@ public class Coloc_genes_2DCells implements PlugIn {
                 Objects3DIntPopulation gene3FilterPop = genes.geneIntensityFilter(gene3Pop,imgGene3,genes.gene3IntTh);
                 System.out.println("Total gene3 after intensity filter = "+gene3FilterPop.getNbObjects());
                 genes.closeImages(imgGene3);
-                gene3Pop = null;
                 
                 // Save objects image
                 ImageHandler imhDapi = ImageHandler.wrap(imgDapi).createSameDimensions();
@@ -172,10 +169,10 @@ public class Coloc_genes_2DCells implements PlugIn {
                 ImagePlus[] imgColors = {imhGene3.getImagePlus(), imhGene1.getImagePlus(), imhDapi.getImagePlus(),null,imhGene2.getImagePlus()};
                 ImagePlus imgObjects = new RGBStackMerge().mergeHyperstacks(imgColors, false);
                 imgObjects.setCalibration(genes.cal);
-                FileSaver ImgObjectsFile = new FileSaver(imgObjects);
-                ImgObjectsFile.saveAsTiff(outDirResults+rootName+"_Objects.tif");
+                FileSaver imgObjectsFile = new FileSaver(imgObjects);
+                imgObjectsFile.saveAsTiff(outDirResults+rootName+"_Objects.tif");
                 genes.closeImages(imgDapi);
-
+                genes.closeImages(imgObjects);
                 // Find colocalized cells
 
                 // gene1/dapi
@@ -189,16 +186,15 @@ public class Coloc_genes_2DCells implements PlugIn {
                 System.out.println(gene3DapiPop.getNbObjects() + " gene3 with dapi found");
                 // gene1 / gene2
                 Objects3DIntPopulation gene1Gene2Pop = genes.findColoc(gene1DapiPop, gene2DapiPop);
-                System.out.println(gene1Gene2Pop.getNbObjects() + " gene1 with gene2 found");
-                // gene1 / gene3
+                System.out.println(gene1Gene2Pop.getNbObjects() + " gene1 with gene2 found");                // gene1 / gene3
                 Objects3DIntPopulation gene1Gene3Pop = genes.findColoc(gene1DapiPop, gene3DapiPop);
-                System.out.println(gene1Gene3Pop.getNbObjects() + " gene1 with gene3 found");
+                System.out.println(gene1Gene3Pop.getNbObjects() + " gene1 with gene3 found");       
                 // gene2 / gene3
                 Objects3DIntPopulation gene2Gene3Pop = genes.findColoc(gene2DapiPop, gene3DapiPop);
                 System.out.println(gene2Gene3Pop.getNbObjects() + " gene2 with gene3 found");
                 // gene1 / gene2 / gene3
                 Objects3DIntPopulation gene1Gene2Gene3Pop = genes.findColoc3(gene1DapiPop, gene2DapiPop, gene3DapiPop);
-                System.out.println(gene1Gene2Gene3Pop.getNbObjects() + " gene1 with gene2 and gene3 found");
+                System.out.println(gene1Gene2Gene3Pop.getNbObjects() + " gene1 with gene2 with gene3 found");
 
                 // write results
                 IJ.showStatus("Writing results ...");

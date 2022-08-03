@@ -1,7 +1,4 @@
 
-
-
-
 import Orion_Stardist.StarDist2D;
 import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
@@ -15,9 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import javax.swing.ImageIcon;
 import loci.formats.meta.IMetadata;
-import mcib3d.geom.Object3D;
 import mcib3d.geom.Objects3DPopulation;
-import mcib3d.geom.Objects3DPopulationColocalisation;
 import mcib3d.geom2.Object3DInt;
 import mcib3d.geom2.Objects3DIntPopulation;
 import mcib3d.geom2.measurements.MeasureIntensity;
@@ -26,7 +21,6 @@ import mcib3d.geom2.measurementsPopulation.MeasurePopulationColocalisation;
 import mcib3d.image3d.ImageHandler;
 import mcib3d.image3d.ImageInt;
 import mcib3d.image3d.ImageLabeller;
-import mcib3d.utils.ArrayUtil;
 import net.haesleinhuepf.clij.clearcl.ClearCLBuffer;
 import net.haesleinhuepf.clij2.CLIJ2;
 import net.imglib2.RandomAccessibleInterval;
@@ -212,17 +206,6 @@ public class Genes_2DCells_Processing {
     }
     
     
-    /**
-     * Reset labels
-     */
-    private void resetIndex(Objects3DIntPopulation pop) {
-        int index =0;
-        for (Object3DInt ob : pop.getObjects3DInt()) {
-            ob.setLabel(index);
-            index++;
-        }
-    }
-    
      /**
      * Filter population by size
      */
@@ -236,7 +219,6 @@ public class Genes_2DCells_Processing {
         }
         popF.setVoxelSizeXY(cal.pixelWidth);
         popF.setVoxelSizeZ(cal.pixelDepth);
-        resetIndex(popF);
         return(popF);
     }
         
@@ -364,18 +346,21 @@ public class Genes_2DCells_Processing {
     */
     public Objects3DIntPopulation findColoc(Objects3DIntPopulation pop1, Objects3DIntPopulation pop2) {
         Objects3DIntPopulation colocPop = new Objects3DIntPopulation();
-        MeasurePopulationColocalisation coloc = new MeasurePopulationColocalisation(pop1, pop2);
-        for (Object3DInt obj1 : pop1.getObjects3DInt()) {
-            for (Object3DInt obj2 : pop2.getObjects3DInt()) {
-                double colocVal = coloc.getValueObjectsPair(obj1, obj2);
-                if (colocVal > 0) {
-                    colocPop.addObject(obj1); 
-                    break;
+        if (pop1.getNbObjects() > 0 && pop2.getNbObjects() > 0) {
+            MeasurePopulationColocalisation coloc = new MeasurePopulationColocalisation(pop1, pop2);
+            //coloc.getResultsTableOnlyColoc().show("coloc");
+            for (Object3DInt obj1 : pop1.getObjects3DInt()) {
+                for (Object3DInt obj2 : pop2.getObjects3DInt()) {
+                    double colocVal = coloc.getValueObjectsPair(obj1, obj2);
+                    if (colocVal > 0) {
+                        colocPop.addObject(obj1); 
+                        break;
+                    }
                 }
             }
+            colocPop.setVoxelSizeXY(cal.pixelWidth);
+            colocPop.setVoxelSizeZ(cal.pixelDepth);
         }
-        colocPop.setVoxelSizeXY(cal.pixelWidth);
-        colocPop.setVoxelSizeZ(cal.pixelDepth);  
         return(colocPop);
     }
     
@@ -384,10 +369,9 @@ public class Genes_2DCells_Processing {
     * return first population coloc
     */
     public Objects3DIntPopulation findColoc3(Objects3DIntPopulation pop1, Objects3DIntPopulation pop2, Objects3DIntPopulation pop3) {
-        Objects3DIntPopulation coloc1 = findColoc(pop1, pop2);
-        Objects3DIntPopulation coloc2 = findColoc(coloc1, pop3);
-        return(coloc2);
+        Objects3DIntPopulation   coloc1 = findColoc(pop1, pop2);
+        Objects3DIntPopulation   coloc2 = findColoc(coloc1, pop3);
+       return(coloc2);
     }
-
-   
 }
+    
