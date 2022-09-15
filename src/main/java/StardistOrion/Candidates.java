@@ -1,4 +1,4 @@
-package Orion_Stardist;
+package StardistOrion;
 
 import java.util.ArrayList;
 import java.util.Arrays;

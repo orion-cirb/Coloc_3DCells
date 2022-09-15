@@ -1,4 +1,4 @@
-package Orion_Stardist;
+package StardistOrion;
 
 import java.net.URL;
 import java.util.List;
@@ -6,16 +6,11 @@ import java.util.List;
 import org.scijava.app.StatusService;
 import org.scijava.command.CommandService;
 import org.scijava.log.LogService;
-import org.scijava.plugin.Parameter;
-//import org.scijava.ui.DialogPrompt.MessageType;
-//import org.scijava.ui.UIService;
-
 import ij.IJ;
 import ij.ImagePlus;
 import ij.gui.PointRoi;
 import ij.gui.PolygonRoi;
 import ij.gui.Roi;
-import ij.plugin.Duplicator;
 import ij.plugin.frame.RoiManager;
 import ij.process.ImageProcessor;
 import net.imagej.Dataset;
@@ -28,22 +23,10 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 
 public abstract class StarDist2DBase {
 
-    @Parameter
     protected LogService log;
-
-    //@Parameter
-    //protected UIService ui;
-
-    @Parameter
     protected CommandService command;
-
-    @Parameter
     protected DatasetService dataset;
-
-    @Parameter
     protected StatusService status;
-    
-    @Parameter
     protected LUTService lut;
 
     // ---------
@@ -73,21 +56,21 @@ public abstract class StarDist2DBase {
 
     protected void export(String outputType, Candidates polygons, int framePosition, long numFrames, String roiPosition) {
         switch (outputType) {
-        case Opt.OUTPUT_ROI_MANAGER:
+            case "ROI Manager":
             exportROIs(polygons, framePosition, numFrames, roiPosition);
             break;
-        case Opt.OUTPUT_LABEL_IMAGE:
+        case "Label Image":
             exportLabelImage(polygons, framePosition);
             break;
-        case Opt.OUTPUT_BOTH:
+        case "Both":
             exportROIs(polygons, framePosition, numFrames, roiPosition);
             exportLabelImage(polygons, framePosition);
             break;
-        case Opt.OUTPUT_POLYGONS:
+        case "Polygons":
             exportPolygons(polygons);
             break;
         default:
-            showError(String.format("Invalid %s \"%s\"", Opt.OUTPUT_TYPE, outputType));
+            showError(String.format("Invalid %s \"%s\"", "Output Type", outputType));
         }
     }
 
@@ -95,7 +78,7 @@ public abstract class StarDist2DBase {
         final boolean isTimelapse = framePosition > 0;
         if (roiManager == null) {
             roiManager = RoiManager.getInstance();
-            if (roiManager == null) roiManager = new RoiManager(false);
+            if (roiManager == null) roiManager = new RoiManager();
             roiManager.reset(); // clear all rois
         }
 
@@ -119,14 +102,14 @@ public abstract class StarDist2DBase {
     
     protected void setRoiPosition(Roi roi, int framePosition, String roiPosition) {
         switch (roiPosition) {
-        case Opt.ROI_POSITION_STACK:
+        case "Stack":
             roi.setPosition(framePosition);
             break;
-        case Opt.ROI_POSITION_HYPERSTACK:
+        case "Hyperstack":
             roi.setPosition(0, 0, framePosition);
             break;
         default:
-            showError(String.format("Invalid %s \"%s\"", Opt.ROI_POSITION, roiPosition));
+            showError(String.format("Invalid %s \"%s\"", "ROI Position", roiPosition));
         }
     }
 
@@ -146,7 +129,6 @@ public abstract class StarDist2DBase {
         }
         labelCount += numWinners;
         labelId = (labelId + numWinners) % MAX_LABEL_ID;
-        System.out.print(labelImage.getWidth());
     }
 
     abstract protected void exportPolygons(Candidates polygons);
@@ -154,19 +136,19 @@ public abstract class StarDist2DBase {
     abstract protected ImagePlus createLabelImage();
 
     protected Dataset labelImageToDataset(String outputType) {
-        if (outputType.equals(Opt.OUTPUT_LABEL_IMAGE) || outputType.equals(Opt.OUTPUT_BOTH)) {
+        if (outputType.equals("Label Image") || outputType.equals("Both")) {
             if (labelCount > MAX_LABEL_ID) {
-                log.error(String.format("Found more than %d segments -> label image does contain some repetitive IDs.\n(\"%s\" output instead does not have this problem).", MAX_LABEL_ID, Opt.OUTPUT_ROI_MANAGER));
+                log.error(String.format("Found more than %d segments -> label image does contain some repetitive IDs.\n(\"%s\" output instead does not have this problem).", MAX_LABEL_ID, "ROI Manager"));
             }
             final boolean isTimelapse = labelImage.getNFrames() > 1;
             final Img labelImg = (Img) ImageJFunctions.wrap(labelImage);
             final AxisType[] axes = isTimelapse ? new AxisType[]{Axes.X, Axes.Y, Axes.TIME} : new AxisType[]{Axes.X, Axes.Y};
-            final Dataset ds = Utils.raiToDataset(dataset, Opt.LABEL_IMAGE, labelImg, axes);
+            final Dataset ds = Utils.raiToDataset(dataset, "Label Image", labelImg, axes);
             // set LUT 
             try {
                 ds.initializeColorTables(1);                
-                // ds.setColorTable(lut.loadLUT(lut.findLUTs().get("StarDist.lut")), 0);
-                ds.setColorTable(lut.loadLUT(getResource("luts/StarDist.lut")), 0);
+                 //ds.setColorTable(lut.loadLUT(lut.findLUTs().get("StarDist.lut")), 0);
+                //ds.setColorTable(lut.loadLUT(getResource("luts/StarDist.lut")), 0);
                 ds.setChannelMinimum(0, 0);
                 ds.setChannelMaximum(0, Math.min(labelCount, MAX_LABEL_ID));
             } catch (Exception e) {

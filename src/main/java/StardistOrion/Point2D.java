@@ -1,4 +1,4 @@
-package Orion_Stardist;
+package StardistOrion;
 
 public class Point2D {
     
