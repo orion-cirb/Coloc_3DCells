@@ -154,7 +154,7 @@ public class Coloc_3DCells implements PlugIn {
                 ImagePlus imgGFP;
                 Objects3DIntPopulation gfpFilterPop = new Objects3DIntPopulation();
                 indexCh = channels.indexOf(chs.get(1));
-                if (!chs.get(indexCh).equals("None")) {
+                if (!chs.get(1).equals("None")) {
                     System.out.println("Opening GFP channel " + chs.get(1) +" ...");
                     imgGFP = BF.openImagePlus(options)[indexCh];
                     Objects3DIntPopulation gfpPop = proc.stardistCellsPop(imgGFP, channelsName.get(1));
@@ -168,7 +168,7 @@ public class Coloc_3DCells implements PlugIn {
                 ImagePlus imgCC1;
                 Objects3DIntPopulation cc1FilterPop = new Objects3DIntPopulation();
                 indexCh = channels.indexOf(chs.get(2));
-                if (!chs.get(indexCh).equals("None")) {
+                if (!chs.get(2).equals("None")) {
                     System.out.println("Opening CC1 channel " + channels.get(2) +" ...");
                     imgCC1 = BF.openImagePlus(options)[indexCh];
                     Objects3DIntPopulation cc1Pop = proc.cellPoseCellsPop(imgCC1);
@@ -182,7 +182,7 @@ public class Coloc_3DCells implements PlugIn {
                 ImagePlus imgNG2 = null;
                 indexCh = channels.indexOf(chs.get(3));
                 double bgNG2 = 0;
-                if (!chs.get(indexCh).equals("None")) {
+                if (!chs.get(3).equals("None")) {
                     System.out.println("Opening NG2 channel " + channels.get(3) +" ...");
                     imgNG2 = BF.openImagePlus(options)[indexCh];
                     // find background of NG2 as mean + std of min projection
