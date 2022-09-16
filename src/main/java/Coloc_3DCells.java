@@ -141,7 +141,7 @@ public class Coloc_3DCells implements PlugIn {
                 int indexCh = channels.indexOf(chs.get(0));
                 System.out.println("Opening nucleus channel " + chs.get(0) +" ...");
                 ImagePlus imgNuc = BF.openImagePlus(options)[indexCh];
-                Objects3DIntPopulation nucPop = proc.stardistCellsPop(imgNuc, channelsName.get(0));
+                Objects3DIntPopulation nucPop = proc.stardistCellsPop(imgNuc);
                 System.out.println("Total nucleus found = "+nucPop.getNbObjects());
                 
                 // Initialize infos in nucleus class
@@ -157,7 +157,7 @@ public class Coloc_3DCells implements PlugIn {
                 if (!chs.get(1).equals("None")) {
                     System.out.println("Opening GFP channel " + chs.get(1) +" ...");
                     imgGFP = BF.openImagePlus(options)[indexCh];
-                    Objects3DIntPopulation gfpPop = proc.stardistCellsPop(imgGFP, channelsName.get(1));
+                    Objects3DIntPopulation gfpPop = proc.cellPoseCellsPop(imgGFP, proc.gfpCellModel, proc.gfpCellPoseDiameter);
                     System.out.println("Total GFP = "+gfpPop.getNbObjects());
                     gfpFilterPop = proc.intensityFilter(gfpPop, imgGFP, proc.gfpIntTh);
                     System.out.println("Total GFP after intensity filter = "+gfpFilterPop.getNbObjects());
@@ -171,7 +171,7 @@ public class Coloc_3DCells implements PlugIn {
                 if (!chs.get(2).equals("None")) {
                     System.out.println("Opening CC1 channel " + channels.get(2) +" ...");
                     imgCC1 = BF.openImagePlus(options)[indexCh];
-                    Objects3DIntPopulation cc1Pop = proc.cellPoseCellsPop(imgCC1);
+                    Objects3DIntPopulation cc1Pop = proc.cellPoseCellsPop(imgCC1, proc.cc1CellModel, proc.cc1CellPoseDiameter);
                     System.out.println("Total CC1 = "+cc1Pop.getNbObjects());
                     cc1FilterPop = proc.intensityFilter(cc1Pop, imgCC1, proc.cc1IntTh);
                     System.out.println("Total CC1 after intensity filter = "+cc1FilterPop.getNbObjects());

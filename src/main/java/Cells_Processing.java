@@ -5,14 +5,12 @@ import StardistOrion.StarDist2D;
 import fiji.util.gui.GenericDialogPlus;
 import ij.IJ;
 import ij.ImagePlus;
-import ij.gui.WaitForUserDialog;
 import ij.measure.Calibration;
 import ij.plugin.Duplicator;
 import ij.plugin.ZProjector;
 import ij.process.ImageProcessor;
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.Panel;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -57,18 +55,16 @@ public class Cells_Processing {
     // max size for nucleus µm3
     private double maxNuc = 1000;
     
-    // max size for nucleus µm3
-    private double maxCC1 = maxNuc*2, maxGFP = maxNuc*2;
+    // max size for cells µm3
+    private double maxCC1 = maxNuc*2;
+    private double maxGFP = maxCC1;
     
     
     // nucleus dilatation
     public float nucDil = 1;
     
     private double nucProbthr = 0.40;
-    private double gfpProbthr = 0.50;
-    
     private double nucOver = 0.25;
-    private double gfpOver = 0.25;
     
     // gene Intensity threshold
     public double gfpIntTh = 500;
@@ -83,11 +79,13 @@ public class Cells_Processing {
     private String stardistOutput = "Label Image"; 
     
     // Cellpose
-    private int cellPoseDiameter = 50;
+    public int gfpCellPoseDiameter = 50;
+    public int cc1CellPoseDiameter = 50;
     private boolean useGpu = true;
     private String[] cellposeModels = {"cyto","nuclei","tissuenet","livecell", "cyto2", "general","CP", "CPx", "TN1", "TN2", "TN3", "LC1",
         "LC2", "LC3", "LC4"};
-    private String cellModel = "";
+    public String gfpCellModel = "";
+    public String cc1CellModel = "";
     private String cellPoseEnvDirPath = "/home/phm/.conda/envs/cellpose";
     
     // cell association
@@ -251,8 +249,7 @@ public class Cells_Processing {
         gd.addNumericField("Min nucleus vol. (µm3) :", minNuc);
         gd.addNumericField("Max nucleus vol. (µm3) :", maxNuc); 
         gd.addNumericField("Nucleus dilatation (µm):", nucDil);
-        gd.addPanel(new Panel());
-        gd.addMessage("StarDist model", new Font(Font.MONOSPACED , Font.BOLD, 12), Color.black);
+        gd.addMessage("Stardist parameters", Font.getFont("Monospace"), Color.black);
         if (models.length > 0) {
             gd.addChoice("StarDist model :",models, models[0]);
         }
@@ -260,18 +257,17 @@ public class Cells_Processing {
             gd.addMessage("No StarDist model found in Fiji !!", Font.getFont("Monospace"), Color.red);
             gd.addFileField("StarDist model :", stardistModel);
         }
-        gd.addMessage("Stardist parameters", Font.getFont("Monospace"), Color.black);
-        gd.addMessage("Nucleus parameters", Font.getFont("Monospace"), Color.blue);
         gd.addNumericField("Probability : ", nucProbthr, 2);
         gd.addNumericField("Overlap     : ", nucOver, 2);
+        gd.addMessage("Cells parameters", new Font(Font.MONOSPACED , Font.BOLD, 12), Color.black);
+        gd.addDirectoryField("Cellpose environment path : ", cellPoseEnvDirPath);
         gd.addMessage("GFP cells parameters", Font.getFont("Monospace"), Color.green);
-        gd.addNumericField("Probability             : ", gfpProbthr, 2);
-        gd.addNumericField("Overlap                 : ", gfpOver, 2);
+        gd.addChoice("Cellpose model : ", cellposeModels, cellposeModels[4]);
+        gd.addNumericField("Cell size (µm3)         : ", gfpCellPoseDiameter, 2);
         gd.addNumericField("Max Intensity Threshold :", gfpIntTh, 4);
-        gd.addMessage("Cellpose parameters for CC1 detection", new Font(Font.MONOSPACED , Font.BOLD, 12), Color.black);
-        gd.addDirectoryField("Cellpose environment path", cellPoseEnvDirPath);
-        gd.addChoice("Cellpose model", cellposeModels, cellposeModels[4]);
-        gd.addNumericField("Cell size (µm3)         : ", cellPoseDiameter, 2);
+        gd.addMessage("CC1 parameters", Font.getFont("Monospace"), Color.red);
+        gd.addChoice("Cellpose model : ", cellposeModels, cellposeModels[4]);
+        gd.addNumericField("Cell size (µm3)         : ", cc1CellPoseDiameter, 2);
         gd.addNumericField("Max Intensity Threshold :", cc1IntTh, 4);
         gd.addMessage("Image calibration", new Font(Font.MONOSPACED , Font.BOLD, 12), Color.black);
         gd.addNumericField("Pixel size : ", pixelSize, 3);
@@ -295,12 +291,12 @@ public class Cells_Processing {
         nucDil = (float)gd.getNextNumber();
         nucProbthr = gd.getNextNumber();
         nucOver = gd.getNextNumber();
-        gfpProbthr = gd.getNextNumber();
-        gfpOver = gd.getNextNumber();
-        gfpIntTh = gd.getNextNumber();
         cellPoseEnvDirPath = gd.getNextString();
-        cellModel = gd.getNextChoice();
-        cellPoseDiameter = (int)gd.getNextNumber();
+        gfpCellModel = gd.getNextChoice();
+        cc1CellPoseDiameter = (int)gd.getNextNumber();
+        gfpIntTh = gd.getNextNumber();
+        cc1CellModel = gd.getNextChoice();
+        cc1CellPoseDiameter = (int)gd.getNextNumber();
         cc1IntTh = gd.getNextNumber();
         pixelSize = gd.getNextNumber();
         cal.pixelWidth = cal.pixelHeight = pixelSize;
@@ -420,7 +416,7 @@ public class Cells_Processing {
      * split image if size > 1024
      * return nuclei population
      */
-    public Objects3DIntPopulation stardistCellsPop(ImagePlus img, String type){
+    public Objects3DIntPopulation stardistCellsPop(ImagePlus img){
         // resize to be in a stardist-friendly scale
         int width = img.getWidth();
         int height = img.getHeight();
@@ -437,24 +433,10 @@ public class Cells_Processing {
         IJ.run(imgStar, "Remove Outliers", "block_radius_x=5 block_radius_y=5 standard_deviations=1 stack");
         File starDistModelFile = new File(stardistModel);
         StarDist2D star = new StarDist2D(syncObject, starDistModelFile);
-        double probTh = 0;
-        double over = 0;
-        double min = 0;
-        double max = 0;
-        switch (type) {
-            case "Nucleus" :
-                probTh = nucProbthr;
-                over = nucOver;
-                min = minNuc;
-                max = maxNuc;
-                break;
-            case "GFP" : 
-                probTh = gfpProbthr;
-                over = gfpOver;
-                min = minNuc;
-                max = maxGFP;
-                break; 
-        }
+        double probTh = nucProbthr;
+        double over = nucOver;
+        double min = minNuc;
+        double max = maxNuc;
         star.setParams(stardistPercentileBottom, stardistPercentileTop, probTh, over, stardistOutput);
         star.loadInput(imgStar);
         star.run();
@@ -476,7 +458,7 @@ public class Cells_Processing {
  * @param type
  * @return 
  */
-    public Objects3DIntPopulation cellPoseCellsPop(ImagePlus img){
+    public Objects3DIntPopulation cellPoseCellsPop(ImagePlus img, String cellModel, int cellPoseDiameter){
         CellposeTaskSettings settings = new CellposeTaskSettings(cellModel, 1, cellPoseDiameter, cellPoseEnvDirPath);
         settings.setStitchThreshold(0.25); 
         settings.setFlowTh(0.6);
