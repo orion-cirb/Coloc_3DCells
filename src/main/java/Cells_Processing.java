@@ -265,12 +265,12 @@ public class Cells_Processing {
         gd.addDirectoryField("Cellpose environment path : ", cellPoseEnvDirPath);
         gd.addMessage("GFP cells parameters", Font.getFont("Monospace"), Color.green);
         gd.addChoice("Cellpose model : ", cellposeModels, cellposeModels[4]);
-        gd.addNumericField("Cell size (µm3)         : ", gfpCellPoseDiameter, 2);
-        gd.addNumericField("Max Intensity Threshold :", gfpIntTh, 4);
+        gd.addNumericField("Min Cell size (µm3)         : ", gfpCellPoseDiameter, 2);
+        gd.addNumericField("Min Intensity Threshold :", gfpIntTh, 4);
         gd.addMessage("CC1 parameters", Font.getFont("Monospace"), Color.red);
         gd.addChoice("Cellpose model : ", cellposeModels, cellposeModels[4]);
-        gd.addNumericField("Cell size (µm3)         : ", cc1CellPoseDiameter, 2);
-        gd.addNumericField("Max Intensity Threshold :", cc1IntTh, 4);
+        gd.addNumericField("Min Cell size (µm3)         : ", cc1CellPoseDiameter, 2);
+        gd.addNumericField("Min Intensity Threshold :", cc1IntTh, 4);
         gd.addMessage("Image calibration", new Font(Font.MONOSPACED , Font.BOLD, 12), Color.black);
         gd.addNumericField("Pixel size : ", pixelSize, 3);
         gd.showDialog();

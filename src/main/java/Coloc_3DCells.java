@@ -128,7 +128,7 @@ public class Coloc_3DCells implements PlugIn {
                 ArrayList<Nucleus> nuclei = new ArrayList<>();
                 // find rois
                 String roiFile = imageDir+rootName+".roi";
-                if (roiFile != null) {
+                if (new File(roiFile).exists()) {
                     Roi roi = new Opener().openRoi(roiFile);
                     options.setCrop(true);
                     Region reg = new Region(roi.getBounds().x, roi.getBounds().y, roi.getBounds().width, roi.getBounds().height);
