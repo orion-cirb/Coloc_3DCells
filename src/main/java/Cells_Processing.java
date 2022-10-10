@@ -236,6 +236,8 @@ public class Cells_Processing {
     public ArrayList dialog(List<String> channels, List<String> channelsName) {
         ArrayList ch = new ArrayList();
         String[] models = findStardistModels();
+        if (IJ.isWindows())
+            cellPoseEnvDirPath = System.getProperty("user.home")+"\\miniconda3\\envs\\CellPose";
         GenericDialogPlus gd = new GenericDialogPlus("Parameters");
         gd.setInsets(0, 120, 0);
         gd.addImage(icon);
@@ -248,7 +250,7 @@ public class Cells_Processing {
         gd.addMessage("Nucleus parameters", new Font(Font.MONOSPACED , Font.BOLD, 12), Color.black);
         gd.addNumericField("Min nucleus vol. (µm3) :", minNuc);
         gd.addNumericField("Max nucleus vol. (µm3) :", maxNuc); 
-        gd.addNumericField("Nucleus dilatation (µm):", nucDil);
+        gd.addNumericField("Nucleus dilation (µm):", nucDil);
         gd.addMessage("Stardist parameters", Font.getFont("Monospace"), Color.black);
         if (models.length > 0) {
             gd.addChoice("StarDist model :",models, models[0]);

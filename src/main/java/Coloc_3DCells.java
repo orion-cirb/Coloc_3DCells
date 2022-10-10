@@ -107,7 +107,7 @@ public class Coloc_3DCells implements PlugIn {
             FileWriter fileResultsNumber = new FileWriter(outDirResults + "CellsNumberResults.xls", false);
             nucleusResults = new BufferedWriter(fileResultsNumber);
             try {
-                nucleusResults.write("ImageName\t#Nucleus\tVol\tIs GFP\tIs CC1\tNG2 mean intensity\tNG2 mean correted intensity\n");
+                nucleusResults.write("ImageName\t#Nucleus\tVol\tIs GFP\tIs CC1\tNG2 mean intensity\tNG2 mean corrected intensity\n");
                 nucleusResults.flush();
             }
             catch (IOException ex) {
