@@ -186,8 +186,7 @@ public class Coloc_3DCells implements PlugIn {
                     System.out.println("Opening NG2 channel " + channels.get(3) +" ...");
                     imgNG2 = BF.openImagePlus(options)[indexCh];
                     // find background of NG2 as mean + std of min projection
-                    double[] bg = proc.find_background(imgNG2);
-                    bgNG2 = bg[0]+ bg[1];
+                    bgNG2 = proc.find_background(imgNG2);
                 }
                     
                 

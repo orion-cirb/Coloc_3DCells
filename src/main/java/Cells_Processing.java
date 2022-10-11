@@ -219,13 +219,11 @@ public class Cells_Processing {
     * read mean intensity
     * @param img 
     */
-    public double[] find_background(ImagePlus img) {
-      double[] bg = new double[2];
+    public double find_background(ImagePlus img) {
       ImagePlus imgProj = doZProjection(img, ZProjector.MIN_METHOD);
       ImageProcessor imp = imgProj.getProcessor();
-      bg[0] = imp.getStatistics().mean;
-      bg[1] = imp.getStatistics().stdDev;
-      System.out.println("Background =  " + bg[0] + " +- " + bg[1]);
+      double bg = imp.getStatistics().median;
+      System.out.println("Background =  " + bg);
       closeImages(imgProj);
       return(bg);
     }
