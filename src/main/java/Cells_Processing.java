@@ -63,7 +63,7 @@ public class Cells_Processing {
     // nucleus dilatation
     public float nucDil = 1;
     
-    private double nucProbthr = 0.40;
+    private double nucProbThr = 0.40;
     private double nucOver = 0.25;
     
     // gene Intensity threshold
@@ -433,18 +433,13 @@ public class Cells_Processing {
         IJ.run(imgStar, "Remove Outliers", "block_radius_x=5 block_radius_y=5 standard_deviations=1 stack");
         File starDistModelFile = new File(stardistModel);
         StarDist2D star = new StarDist2D(syncObject, starDistModelFile);
-        double probTh = nucProbthr;
-        double over = nucOver;
-        double min = minNuc;
-        double max = maxNuc;
-        star.setParams(stardistPercentileBottom, stardistPercentileTop, probTh, over, stardistOutput);
+        star.setParams(stardistPercentileBottom, stardistPercentileTop, nucProbThr, nucOver, stardistOutput);
         star.loadInput(imgStar);
         star.run();
         // label in 3D
         ImagePlus imgLabels = (resized) ? star.associateLabels().resize(width, height, 1, "none") : star.associateLabels();
         imgLabels.setCalibration(cal);
-        ImageHandler imh = ImageHandler.wrap(imgLabels);
-        Objects3DIntPopulation pop = sizeFilterPop(new Objects3DIntPopulation(imh), min, max);
+        Objects3DIntPopulation pop = new Objects3DIntPopulation(ImageHandler.wrap(imgLabels)).getFilterSize(minNuc/pixVol, maxNuc/pixVol);
         closeImages(imgLabels);
         closeImages(imgStar);
         return(pop);

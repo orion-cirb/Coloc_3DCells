@@ -68,8 +68,8 @@ public class StarDist2D extends StarDist2DBase implements Command {
     private float max = 0; // for association labels
     
     public StarDist2D(Object obj, File tmpModelFile) {
-         ij = new ImageJ();
-         ij.launch();
+        ij = new ImageJ();
+        ij.launch();
         dataset = ij.dataset();
         command = ij.command();
         obj_ = obj;
@@ -287,10 +287,10 @@ public class StarDist2D extends StarDist2DBase implements Command {
         max = 0;
         IJ.run(labImg, "Select None", ""); 
         for (int i=1; i<labImg.getNSlices(); i++) {
-             ImagePlus inext = labImg.crop((i+1)+"-"+(i+1));
-             associated[i] = associate(inext, associated[i-1]);
-             inext.flush();
-             inext.close();
+            ImagePlus inext = labImg.crop((i+1)+"-"+(i+1));
+            associated[i] = associate(inext, associated[i-1]);
+            inext.flush();
+            inext.close();             
         }
         ImagePlus hyperRes = new Concatenator().concatenate(associated, false);
         hyperRes.setDimensions(1, hyperRes.getNFrames(), 1);
@@ -306,10 +306,10 @@ public class StarDist2D extends StarDist2DBase implements Command {
         
         ImageHandler img1 = ImageInt.wrap(ref);
         ImageHandler img2 = ImageInt.wrap(ip);
-        
         TrackingAssociation association = new TrackingAssociation(img1, img2, maxBB, minColoc);
+        association.setMaxLabel(max);
         ImageHandler trackedImage = association.getTrackedImage();
-
+        max = association.getMaxLabel();
         return trackedImage.getImagePlus();
     }
     
