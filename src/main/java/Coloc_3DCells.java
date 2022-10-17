@@ -157,7 +157,7 @@ public class Coloc_3DCells implements PlugIn {
                 if (!chs.get(1).equals("None")) {
                     System.out.println("Opening GFP channel " + chs.get(1) +" ...");
                     imgGFP = BF.openImagePlus(options)[indexCh];
-                    Objects3DIntPopulation gfpPop = proc.cellPoseCellsPop(imgGFP, proc.gfpCellModel, proc.gfpCellPoseDiameter);
+                    Objects3DIntPopulation gfpPop = proc.cellPoseCellsPop(imgGFP, proc.cellGFPModel);
                     System.out.println("Total GFP = "+gfpPop.getNbObjects());
                     gfpFilterPop = proc.intensityFilter(gfpPop, imgGFP, proc.gfpIntTh);
                     System.out.println("Total GFP after intensity filter = "+gfpFilterPop.getNbObjects());
@@ -171,7 +171,7 @@ public class Coloc_3DCells implements PlugIn {
                 if (!chs.get(2).equals("None")) {
                     System.out.println("Opening CC1 channel " + channels.get(2) +" ...");
                     imgCC1 = BF.openImagePlus(options)[indexCh];
-                    Objects3DIntPopulation cc1Pop = proc.cellPoseCellsPop(imgCC1, proc.cc1CellModel, proc.cc1CellPoseDiameter);
+                    Objects3DIntPopulation cc1Pop = proc.cellPoseCellsPop(imgCC1, proc.cellCC1Model);
                     System.out.println("Total CC1 = "+cc1Pop.getNbObjects());
                     cc1FilterPop = proc.intensityFilter(cc1Pop, imgCC1, proc.cc1IntTh);
                     System.out.println("Total CC1 after intensity filter = "+cc1FilterPop.getNbObjects());
@@ -185,7 +185,7 @@ public class Coloc_3DCells implements PlugIn {
                 if (!chs.get(3).equals("None")) {
                     System.out.println("Opening NG2 channel " + channels.get(3) +" ...");
                     imgNG2 = BF.openImagePlus(options)[indexCh];
-                    // find background of NG2 as mean + std of min projection
+                    // find background of NG2
                     bgNG2 = proc.find_background(imgNG2);
                 }
                     

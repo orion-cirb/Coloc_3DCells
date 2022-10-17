@@ -31,6 +31,7 @@ import mcib3d.geom2.Object3DComputation;
 import mcib3d.geom2.Object3DInt;
 import mcib3d.geom2.Object3DIntLabelImage;
 import mcib3d.geom2.Objects3DIntPopulation;
+import mcib3d.geom2.Objects3DIntPopulationComputation;
 import mcib3d.geom2.measurements.MeasureIntensity;
 import mcib3d.geom2.measurements.MeasureVolume;
 import mcib3d.geom2.measurementsPopulation.MeasurePopulationColocalisation;
@@ -75,25 +76,22 @@ public class Cells_Processing {
     private final double stardistPercentileBottom = 0.2;
     private final double stardistPercentileTop = 99.8;
     private File modelsPath = new File(IJ.getDirectory("imagej")+File.separator+"models");
-    private String stardistModel = "";
+    private String stardistModel = "StandardFluo.zip";
     private String stardistOutput = "Label Image"; 
     
     // Cellpose
-    public int gfpCellPoseDiameter = 50;
-    public int cc1CellPoseDiameter = 50;
+    public int cellMinVol = 10;
+    public int cellMaxVol = 5000;
+    int cellPoseDiameter = 50;
     private boolean useGpu = true;
-    private String[] cellposeModels = {"cyto","nuclei","tissuenet","livecell", "cyto2", "general","CP", "CPx", "TN1", "TN2", "TN3", "LC1",
-        "LC2", "LC3", "LC4"};
-    public String gfpCellModel = "";
-    public String cc1CellModel = "";
+    public String cellGFPModel = "Cyto2";
+     public String cellCC1Model = "Cyto2";
     private String cellPoseEnvDirPath = "/home/phm/.conda/envs/cellpose";
     
-    // cell association
-    private double minColoc = 0.1;     
-    private double maxBB = 0;
     
     // pixel size
     private double pixelSize = 0.258;
+    private double pixVol ;
     public Calibration cal = new Calibration();
     public final ImageIcon icon = new ImageIcon(this.getClass().getResource("/Orion_icon.png"));
 
@@ -234,6 +232,10 @@ public class Cells_Processing {
     public ArrayList dialog(List<String> channels, List<String> channelsName) {
         ArrayList ch = new ArrayList();
         String[] models = findStardistModels();
+        if (models.length == 0) {
+            IJ.showMessage("Error", "No Stardist model found !!!!");
+            return(null);
+        }
         if (IJ.isWindows())
             cellPoseEnvDirPath = System.getProperty("user.home")+"\\miniconda3\\envs\\CellPose";
         GenericDialogPlus gd = new GenericDialogPlus("Parameters");
@@ -249,25 +251,12 @@ public class Cells_Processing {
         gd.addNumericField("Min nucleus vol. (µm3) :", minNuc);
         gd.addNumericField("Max nucleus vol. (µm3) :", maxNuc); 
         gd.addNumericField("Nucleus dilation (µm):", nucDil);
-        gd.addMessage("Stardist parameters", Font.getFont("Monospace"), Color.black);
-        if (models.length > 0) {
-            gd.addChoice("StarDist model :",models, models[0]);
-        }
-        else {
-            gd.addMessage("No StarDist model found in Fiji !!", Font.getFont("Monospace"), Color.red);
-            gd.addFileField("StarDist model :", stardistModel);
-        }
-        gd.addNumericField("Probability : ", nucProbthr, 2);
-        gd.addNumericField("Overlap     : ", nucOver, 2);
         gd.addMessage("Cells parameters", new Font(Font.MONOSPACED , Font.BOLD, 12), Color.black);
-        gd.addDirectoryField("Cellpose environment path : ", cellPoseEnvDirPath);
         gd.addMessage("GFP cells parameters", Font.getFont("Monospace"), Color.green);
-        gd.addChoice("Cellpose model : ", cellposeModels, cellposeModels[4]);
-        gd.addNumericField("Min Cell size (µm3)         : ", gfpCellPoseDiameter, 2);
+        gd.addNumericField("Min Cell size (µm3)         : ", cellMinVol, 2);
+        gd.addNumericField("Max Cell size (µm3)         : ", cellMaxVol, 2);
         gd.addNumericField("Min Intensity Threshold :", gfpIntTh, 4);
         gd.addMessage("CC1 parameters", Font.getFont("Monospace"), Color.red);
-        gd.addChoice("Cellpose model : ", cellposeModels, cellposeModels[4]);
-        gd.addNumericField("Min Cell size (µm3)         : ", cc1CellPoseDiameter, 2);
         gd.addNumericField("Min Intensity Threshold :", cc1IntTh, 4);
         gd.addMessage("Image calibration", new Font(Font.MONOSPACED , Font.BOLD, 12), Color.black);
         gd.addNumericField("Pixel size : ", pixelSize, 3);
@@ -276,49 +265,19 @@ public class Cells_Processing {
             canceled = true;
         for (int i = 0; i < index; i++)
             ch.add(i, gd.getNextChoice());
-        if (models.length > 0) {
-            stardistModel = modelsPath+File.separator+gd.getNextChoice();
-        }
-        else {
-            stardistModel = gd.getNextString();
-        }
-        if (stardistModel.isEmpty()) {
-            IJ.error("No model specify !!");
-            return(null);
-        }
         minNuc = (float)gd.getNextNumber();
         maxNuc = (float)gd.getNextNumber();
         nucDil = (float)gd.getNextNumber();
-        nucProbthr = gd.getNextNumber();
-        nucOver = gd.getNextNumber();
-        cellPoseEnvDirPath = gd.getNextString();
-        gfpCellModel = gd.getNextChoice();
-        cc1CellPoseDiameter = (int)gd.getNextNumber();
+        cellMinVol = (int)gd.getNextNumber();
+        cellMaxVol = (int)gd.getNextNumber();
         gfpIntTh = gd.getNextNumber();
-        cc1CellModel = gd.getNextChoice();
-        cc1CellPoseDiameter = (int)gd.getNextNumber();
         cc1IntTh = gd.getNextNumber();
         pixelSize = gd.getNextNumber();
         cal.pixelWidth = cal.pixelHeight = pixelSize;
+        pixVol = cal.pixelWidth*cal.pixelHeight*cal.pixelDepth;
         return(ch);
     }
     
-    
-    /**
-     * Filter population by size
-     */
-    public Objects3DIntPopulation sizeFilterPop(Objects3DIntPopulation pop, double volMin, double volMax) {
-        Objects3DIntPopulation popF = new Objects3DIntPopulation();
-        for (Object3DInt object : pop.getObjects3DInt()) {
-            double vol = new MeasureVolume(object).getVolumeUnit();
-            if ((vol >= volMin) && (vol <= volMax)) {
-                popF.addObject(object);
-            }
-        }
-        popF.setVoxelSizeXY(cal.pixelWidth);
-        popF.setVoxelSizeZ(cal.pixelDepth);
-        return(popF);
-    }
     
     public Object3DInt DilateObject(Object3DInt obj, float radXYZ) {
         // special case radii = 0
@@ -431,7 +390,7 @@ public class Cells_Processing {
             imgStar = new Duplicator().run(img);
         
         IJ.run(imgStar, "Remove Outliers", "block_radius_x=5 block_radius_y=5 standard_deviations=1 stack");
-        File starDistModelFile = new File(stardistModel);
+        File starDistModelFile = new File(modelsPath+File.separator+stardistModel);
         StarDist2D star = new StarDist2D(syncObject, starDistModelFile);
         star.setParams(stardistPercentileBottom, stardistPercentileTop, nucProbThr, nucOver, stardistOutput);
         star.loadInput(imgStar);
@@ -439,7 +398,8 @@ public class Cells_Processing {
         // label in 3D
         ImagePlus imgLabels = (resized) ? star.associateLabels().resize(width, height, 1, "none") : star.associateLabels();
         imgLabels.setCalibration(cal);
-        Objects3DIntPopulation pop = new Objects3DIntPopulation(ImageHandler.wrap(imgLabels)).getFilterSize(minNuc/pixVol, maxNuc/pixVol);
+        Objects3DIntPopulation pop = new Objects3DIntPopulationComputation(new Objects3DIntPopulation(ImageHandler.wrap(imgLabels))).getFilterSize(minNuc/pixVol, maxNuc/pixVol);
+        pop.resetLabels();
         closeImages(imgLabels);
         closeImages(imgStar);
         return(pop);
@@ -453,7 +413,8 @@ public class Cells_Processing {
  * @param type
  * @return 
  */
-    public Objects3DIntPopulation cellPoseCellsPop(ImagePlus img, String cellModel, int cellPoseDiameter){
+    public Objects3DIntPopulation cellPoseCellsPop(ImagePlus img, String cellModel){
+        
         CellposeTaskSettings settings = new CellposeTaskSettings(cellModel, 1, cellPoseDiameter, cellPoseEnvDirPath);
         settings.setStitchThreshold(0.25); 
         settings.setFlowTh(0.6);
@@ -464,7 +425,7 @@ public class Cells_Processing {
         closeImages(imgIn);
         cellpose_img.setCalibration(cal);
         ImageHandler imh = ImageHandler.wrap(cellpose_img);
-        Objects3DIntPopulation pop = sizeFilterPop(new Objects3DIntPopulation(imh), minNuc, maxCC1);
+        Objects3DIntPopulation pop = new Objects3DIntPopulationComputation(new Objects3DIntPopulation(imh)).getFilterSize(cellMinVol, cellMaxVol);
         imh.closeImagePlus();
         closeImages(cellpose_img);
         return(pop);
