@@ -639,7 +639,7 @@ public class Process {
      * @return 
      */
     public Object3DInt dilateObj(ImagePlus img, Object3DInt obj, double dilSize) {
-        Object3DInt objDil = new Object3DComputation(obj).getObjectDilated((float)(dilSize/cal.pixelWidth), (float)(dilSize/cal.pixelHeight), 
+        Object3DInt objDil = new Object3DComputation(obj).getObjectDilated((float)(dilSize*cal.pixelWidth), (float)(dilSize*cal.pixelHeight), 
                 (float)(dilSize/cal.pixelDepth));
         // check if object go outside image
         BoundingBox bbox = objDil.getBoundingBox();
@@ -699,10 +699,8 @@ public class Process {
         flush_close(imgIn);
 
         // Label detections in 3D
-        ImagePlus imgOut = (resize) ? star.getLabelImagePlus().resize(imgWidth, imgHeight, 1, "none") : star.getLabelImagePlus();       
-        ImagePlus imgLabels = star.associateLabels();
+        ImagePlus imgLabels = (resize) ? star.associateLabels().resize(imgWidth, imgHeight, 1, "none") : star.associateLabels();
         imgLabels.setCalibration(cal); 
-        flush_close(imgOut);
         Objects3DIntPopulation pop = new Objects3DIntPopulation(ImageHandler.wrap(imgLabels));      
         flush_close(imgLabels);
        return(pop);
@@ -738,15 +736,13 @@ public class Process {
         
         // Run CellPose
         CellposeSegmentImgPlusAdvanced cellpose = new CellposeSegmentImgPlusAdvanced(settings, imgIn);
-        ImagePlus imgOut = cellpose.run();
-        ImageProcessor imgOutProc = (resize) ? imgOut.getProcessor().resize(imgWidth, imgHeight, false) : imgOut.getProcessor();
-        imgOut = new ImagePlus("", imgOutProc);
-        imgOut.setCalibration(cal);
-        Objects3DIntPopulation pop = new Objects3DIntPopulation(ImageHandler.wrap(imgOut));
+        ImagePlus imgLabels = (resize) ? cellpose.run().resize(imgWidth, imgHeight, 1, "none") : cellpose.run();
+        imgLabels.setCalibration(cal);
+        Objects3DIntPopulation pop = new Objects3DIntPopulation(ImageHandler.wrap(imgLabels));
         
         // Close images
         flush_close(imgIn);
-        flush_close(imgOut);
+        flush_close(imgLabels);
         return(pop);
     }
     

@@ -38,6 +38,7 @@ import mcib3d.image3d.ImageHandler;
 import org.apache.commons.io.FilenameUtils;
 import org.scijava.util.ArrayUtils;
 import Tools.Process;
+import ij.gui.Line;
 import java.util.Arrays;
 
 
@@ -153,8 +154,9 @@ public class Coloc_3DCells implements PlugIn {
                 ArrayList<Nucleus> nuclei = new ArrayList<>();
                 // find rois
                 String roiFile = imageDir+rootName+".roi";
+                Roi roi = null;
                 if (new File(roiFile).exists()) {
-                    Roi roi = new Opener().openRoi(roiFile);
+                    roi = new Opener().openRoi(roiFile);
                     options.setCrop(true);
                     Region reg = new Region(roi.getBounds().x, roi.getBounds().y, roi.getBounds().width, roi.getBounds().height);
                     options.setCropRegion(0, reg);
@@ -166,6 +168,8 @@ public class Coloc_3DCells implements PlugIn {
                 int indexCh = ArrayUtils.indexOf(imgChs, chs[0]);
                 System.out.println("Opening nucleus channel " + chs[0] +" ...");
                 ImagePlus imgNuc = BF.openImagePlus(options)[indexCh];
+                if (roi != null)
+                    proc.clearOutSide(imgNuc, roi);
                 Objects3DIntPopulation nucPop = proc.stardistObjectsPop(imgNuc, 0.5f, true, 5, stardistModel, nucProbThr, nucOver);
                 System.out.println("Total nucleus found = "+nucPop.getNbObjects());
                 proc.popFilterSize(nucPop, minNucVol, maxNucVol);
@@ -183,6 +187,8 @@ public class Coloc_3DCells implements PlugIn {
                 if (!chs[1].equals("None")) {
                     System.out.println("Opening GFP channel " + chs[1] +" ...");
                     imgGFP = BF.openImagePlus(options)[indexCh];
+                    if (roi != null)
+                        proc.clearOutSide(imgGFP, roi);
                     gfpPop = proc.cellposeDetection(imgGFP, cellGFPModel, cellPoseDiameter, cellPoseMaskTh, cellPoseFlowTh, cellPoseStitchTh, 0.5f, true, useGpu);
                     System.out.println("Total GFP "+gfpPop.getNbObjects());
                     proc.popFilterSize(gfpPop, minCellVol, maxCellVol);
@@ -199,6 +205,8 @@ public class Coloc_3DCells implements PlugIn {
                 if (!chs[2].equals("None")) {
                     System.out.println("Opening CC1 channel " + chs[2] +" ...");
                     imgCC1 = BF.openImagePlus(options)[indexCh];
+                    if (roi != null)
+                        proc.clearOutSide(imgCC1, roi);
                     cc1Pop = proc.cellposeDetection(imgCC1, cellCC1Model, cellPoseDiameter, cellPoseMaskTh, cellPoseFlowTh, cellPoseStitchTh, 0.5f, true, useGpu);
                     System.out.println("Total CC1 "+cc1Pop.getNbObjects());
                     proc.popFilterSize(cc1Pop, minCellVol, maxCellVol);
