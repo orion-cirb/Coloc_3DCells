@@ -37,11 +37,10 @@
 	<dependencies>
             <!-- Clipper -->
             <dependency>
-                    <groupId>de.lighti</groupId>
-                    <artifactId>Clipper</artifactId>
-                    <version>6.4.2</version>
-                    <scope>system</scope>
-                    <systemPath>${basedir}/lib/Clipper-6.4.2.jar</systemPath>
+                <groupId>de.lighti</groupId>
+                <artifactId>Clipper</artifactId>
+                <version>6.4.2</version>
+                <type>jar</type>
             </dependency>
             <dependency>
                 <groupId>de.csbdresden</groupId>
@@ -146,7 +145,7 @@
 	  <artifactId>mcib3d-core</artifactId>
 	  <version>4.0.93</version>
 	  <type>jar</type>
-	 </dependency>
+          </dependency>
 	</dependencies>
         <repositories>
             <repository>

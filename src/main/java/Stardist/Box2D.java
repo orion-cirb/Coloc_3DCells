@@ -1,4 +1,4 @@
-package StardistOrion;
+package Stardist;
 
 public class Box2D {
     

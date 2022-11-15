@@ -5,9 +5,9 @@
  */
 
 
+import Tools.Nucleus;
 import ij.*;
 import ij.gui.Roi;
-import ij.gui.WaitForUserDialog;
 import ij.io.FileSaver;
 import ij.io.Opener;
 import ij.plugin.PlugIn;
@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import loci.common.Region;
@@ -37,17 +36,46 @@ import mcib3d.geom2.Objects3DIntPopulation;
 import mcib3d.geom2.measurements.MeasureVolume;
 import mcib3d.image3d.ImageHandler;
 import org.apache.commons.io.FilenameUtils;
+import org.scijava.util.ArrayUtils;
+import Tools.Process;
+import java.util.Arrays;
+
 
 
 public class Coloc_3DCells implements PlugIn {
+    
+    Tools.Process proc = new Process();
 
     private final boolean canceled = false;
     private String imageDir = "";
     public static String outDirResults = "";
     private BufferedWriter nucleusResults;
     
-    private Cells_Processing proc = new Cells_Processing();
-
+    // StarDist
+    private String stardistModel = "StandardFluo.zip";
+    private double nucProbThr = 0.40;
+    private double nucOver = 0.25;
+    
+    // CellPose
+    int cellPoseDiameter = 30;
+    double cellPoseMaskTh = 0;
+    double cellPoseFlowTh = 0.4;
+    double cellPoseStitchTh = 0.25;
+    private boolean useGpu = true;
+    public String cellGFPModel = "cyto2";
+    public String cellCC1Model = "cyto2";
+    
+    // min max size for nucleus µm3
+    public double minNucVol = 10;
+    public double maxNucVol = 1000;
+    // min max size for cell µm3
+    public int minCellVol = 10;
+    public int maxCellVol = 5000;
+    
+    // gene Intensity threshold
+    public double gfpIntTh = 100;
+    public double cc1IntTh = gfpIntTh;
+            
     /**
      * 
      * @param arg
@@ -86,19 +114,16 @@ public class Coloc_3DCells implements PlugIn {
             proc.cal = proc.findImageCalib(meta);
             
             // Find channel names
-            ArrayList<String> channels = proc.findChannels(imageFiles.get(0));
+            String[] imgChs = proc.findChannels(imageFiles.get(0), meta, reader);
+            ArrayList<String> channels = new ArrayList<>(Arrays.asList(imgChs));
             channels.add("None");
-            List<String> chs = new ArrayList();
-            List<String> channelsName = new ArrayList();
-            channelsName.add("Nucleus");
-            channelsName.add("GFP");
-            channelsName.add("CC1");
-            channelsName.add("NG2");
+            imgChs = channels.toArray(imgChs);
+            String[] channelsName = {"Nucleus", "GFP", "CC1", "NG2"};
 
             // Channels dialog
-            chs = proc.dialog(channels, channelsName);
-            
-            if (chs == null || proc.canceled) {
+            String[] chs = proc.dialog(stardistModel, imgChs, channelsName, minNucVol, maxNucVol, minCellVol, maxCellVol, gfpIntTh, cc1IntTh );
+                
+            if (chs == null) {
                     IJ.showStatus("Plugin cancelled");
                     return;
             }
@@ -138,12 +163,13 @@ public class Coloc_3DCells implements PlugIn {
                 // find dapi and cells channel images
                 
                 // Open DAPI Channel and detect nucleus
-                int indexCh = channels.indexOf(chs.get(0));
-                System.out.println("Opening nucleus channel " + chs.get(0) +" ...");
+                int indexCh = ArrayUtils.indexOf(imgChs, chs[0]);
+                System.out.println("Opening nucleus channel " + chs[0] +" ...");
                 ImagePlus imgNuc = BF.openImagePlus(options)[indexCh];
-                Objects3DIntPopulation nucPop = proc.stardistCellsPop(imgNuc);
+                Objects3DIntPopulation nucPop = proc.stardistObjectsPop(imgNuc, 0.5f, true, 5, stardistModel, nucProbThr, nucOver);
                 System.out.println("Total nucleus found = "+nucPop.getNbObjects());
-                
+                proc.popFilterSize(nucPop, minNucVol, maxNucVol);
+                System.out.println("Total nucleus found aflter size filter "+nucPop.getNbObjects());
                 // Initialize infos in nucleus class
                 for (Object3DInt nucObj : nucPop.getObjects3DInt()) {
                     double vol = new MeasureVolume(nucObj).getVolumeUnit();
@@ -152,41 +178,45 @@ public class Coloc_3DCells implements PlugIn {
                 
                 // Open gfp image
                 ImagePlus imgGFP;
-                Objects3DIntPopulation gfpFilterPop = new Objects3DIntPopulation();
-                indexCh = channels.indexOf(chs.get(1));
-                if (!chs.get(1).equals("None")) {
-                    System.out.println("Opening GFP channel " + chs.get(1) +" ...");
+                Objects3DIntPopulation gfpPop = new Objects3DIntPopulation();
+                indexCh = ArrayUtils.indexOf(imgChs, chs[1]);
+                if (!chs[1].equals("None")) {
+                    System.out.println("Opening GFP channel " + chs[1] +" ...");
                     imgGFP = BF.openImagePlus(options)[indexCh];
-                    Objects3DIntPopulation gfpPop = proc.cellPoseCellsPop(imgGFP, proc.cellGFPModel);
-                    System.out.println("Total GFP = "+gfpPop.getNbObjects());
-                    gfpFilterPop = proc.intensityFilter(gfpPop, imgGFP, proc.gfpIntTh);
-                    System.out.println("Total GFP after intensity filter = "+gfpFilterPop.getNbObjects());
-                    proc.closeImages(imgGFP);
+                    gfpPop = proc.cellposeDetection(imgGFP, cellGFPModel, cellPoseDiameter, cellPoseMaskTh, cellPoseFlowTh, cellPoseStitchTh, 0.5f, true, useGpu);
+                    System.out.println("Total GFP "+gfpPop.getNbObjects());
+                    proc.popFilterSize(gfpPop, minCellVol, maxCellVol);
+                    System.out.println("Total GFP after size filter "+gfpPop.getNbObjects());
+                    proc.intensityFilter(gfpPop, imgGFP, gfpIntTh);
+                    System.out.println("Total GFP after intensity filter "+gfpPop.getNbObjects());
+                    proc.flush_close(imgGFP);
                 }
                 
                 // Open cc1 image
                 ImagePlus imgCC1;
-                Objects3DIntPopulation cc1FilterPop = new Objects3DIntPopulation();
-                indexCh = channels.indexOf(chs.get(2));
-                if (!chs.get(2).equals("None")) {
-                    System.out.println("Opening CC1 channel " + channels.get(2) +" ...");
+                Objects3DIntPopulation cc1Pop = new Objects3DIntPopulation();
+                indexCh = ArrayUtils.indexOf(imgChs, chs[2]);
+                if (!chs[2].equals("None")) {
+                    System.out.println("Opening CC1 channel " + chs[2] +" ...");
                     imgCC1 = BF.openImagePlus(options)[indexCh];
-                    Objects3DIntPopulation cc1Pop = proc.cellPoseCellsPop(imgCC1, proc.cellCC1Model);
-                    System.out.println("Total CC1 = "+cc1Pop.getNbObjects());
-                    cc1FilterPop = proc.intensityFilter(cc1Pop, imgCC1, proc.cc1IntTh);
-                    System.out.println("Total CC1 after intensity filter = "+cc1FilterPop.getNbObjects());
-                    proc.closeImages(imgCC1);
+                    cc1Pop = proc.cellposeDetection(imgCC1, cellCC1Model, cellPoseDiameter, cellPoseMaskTh, cellPoseFlowTh, cellPoseStitchTh, 0.5f, true, useGpu);
+                    System.out.println("Total CC1 "+cc1Pop.getNbObjects());
+                    proc.popFilterSize(cc1Pop, minCellVol, maxCellVol);
+                    System.out.println("Total CC1 after size filter "+cc1Pop.getNbObjects());
+                    proc.intensityFilter(cc1Pop, imgCC1, cc1IntTh);
+                    System.out.println("Total CC1 after intensity filter "+cc1Pop.getNbObjects());
+                    proc.flush_close(imgCC1);
                 }
                 
                 // Open NG2 image
                 ImagePlus imgNG2 = null;
-                indexCh = channels.indexOf(chs.get(3));
+                indexCh = ArrayUtils.indexOf(imgChs, chs[3]);
                 double bgNG2 = 0;
-                if (!chs.get(3).equals("None")) {
-                    System.out.println("Opening NG2 channel " + channels.get(3) +" ...");
+                if (!chs[3].equals("None")) {
+                    System.out.println("Opening NG2 channel " + chs[3] +" ...");
                     imgNG2 = BF.openImagePlus(options)[indexCh];
                     // find background of NG2
-                    bgNG2 = proc.find_background(imgNG2);
+                    bgNG2 = proc.findMedianBackground(imgNG2);
                 }
                     
                 
@@ -194,11 +224,11 @@ public class Coloc_3DCells implements PlugIn {
 
                 // dapi/gfp
                 System.out.println("Finding dapi/GFP colocalization ...");
-                Objects3DIntPopulation dapiGFPPop = proc.findColoc(nucPop, gfpFilterPop, channelsName.get(1), nuclei);
+                Objects3DIntPopulation dapiGFPPop = proc.findColoc(nucPop, gfpPop, channelsName[1], nuclei);
                 System.out.println(dapiGFPPop.getNbObjects() + " dapi with GFP found");
                 
                 // dapi/cc1
-                Objects3DIntPopulation dapiCC1Pop = proc.findColoc(nucPop, cc1FilterPop, channelsName.get(2), nuclei);
+                Objects3DIntPopulation dapiCC1Pop = proc.findColoc(nucPop, cc1Pop, channelsName[2], nuclei);
                 System.out.println(dapiCC1Pop.getNbObjects() + " dapi with CC1 found");
                                
                 // Measure intensity of dapi, coloc dapi with gfp and cc1 after dapi dilatation
@@ -212,18 +242,18 @@ public class Coloc_3DCells implements PlugIn {
                 // draw objects pop
                 nucPop.drawInImage(imhNuc);
                 nucDilPop.drawInImage(imhNucDil);
-                if (gfpFilterPop.getNbObjects() > 0)
-                    gfpFilterPop.drawInImage(imhGFP);
-                if (cc1FilterPop.getNbObjects() > 0)
-                    cc1FilterPop.drawInImage(imhCC1);
+                if (gfpPop.getNbObjects() > 0)
+                    gfpPop.drawInImage(imhGFP);
+                if (cc1Pop.getNbObjects() > 0)
+                    cc1Pop.drawInImage(imhCC1);
                 ImagePlus[] imgColors =  {imhCC1.getImagePlus(), imhGFP.getImagePlus(), imhNuc.getImagePlus(), imgNG2, imhNucDil.getImagePlus()};
                 ImagePlus imgObjects = new RGBStackMerge().mergeHyperstacks(imgColors, false);
                 imgObjects.setCalibration(proc.cal);
                 FileSaver imgObjectsFile = new FileSaver(imgObjects);
                 imgObjectsFile.saveAsTiff(outDirResults+rootName+"_Objects.tif");
-                proc.closeImages(imgNuc);
-                proc.closeImages(imgObjects);
-                proc.closeImages(imgNG2);
+                proc.flush_close(imgNuc);
+                proc.flush_close(imgObjects);
+                proc.flush_close(imgNG2);
                 
                 // write results
                 IJ.showStatus("Writing results ...");
@@ -236,7 +266,6 @@ public class Coloc_3DCells implements PlugIn {
                    
             }
             
-                    
         } catch (IOException | DependencyException | ServiceException | FormatException ex) {
             Logger.getLogger(Coloc_3DCells.class.getName()).log(Level.SEVERE, null, ex);
         }
